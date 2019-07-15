@@ -1,0 +1,13 @@
+body {
+}
+
+#the-canvas {
+  display: block;
+  border: 1px solid #080;  
+  position: absolute;
+  top: 50%;
+  margin-top: -120px;
+  left: 50%;
+  margin-left: -120px;
+  border-radius: 50%;
+}

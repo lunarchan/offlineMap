@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Leaflet map</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="dist/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="dist/leaflet-easybutton/src/easy-button.css" />
+    <script type="text/javascript" src="dist/leaflet/leaflet.js"></script>
+    <script type="text/javascript" src="dist/leaflet-easybutton/src/easy-button.js"></script>
+    <script src="dist/leaflet/Path.Drag.js"></script>
+    <script src="dist/leaflet/Leaflet.Editable.js"></script>
+
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        div#container {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+
+    </div>
+
+
+</body>
+
+</html>
+<script>
+    var mapUrl = 'http://localhost:3001/47626774/{z}/{x}/{y}';
+    var tileLayer = new L.TileLayer(mapUrl, {
+        minZoom: 1,
+        maxZoom: 20,
+        attribution: '卫星地图'
+    });
+
+    var center = new L.LatLng(38.8225909761771, 105.380859375);
+
+    map = new L.Map('container', {
+        center: center,
+        zoom: 4,
+        zoomControl: false,
+        attributionControl: false,
+        //layers: [tileLayer],
+        editable: true
+    });
+    tileLayer.addTo(map)
+    L.EditControl = L.Control.extend({
+
+        options: {
+            position: 'topleft',
+            callback: null,
+            kind: '',
+            html: ''
+        },
+
+        onAdd: function (map) {
+            var container = L.DomUtil.create('div', 'leaflet-control leaflet-bar'),
+                link = L.DomUtil.create('a', '', container);
+
+            link.href = '#';
+            link.title = 'Create a new ' + this.options.kind;
+            link.innerHTML = this.options.html;
+            L.DomEvent.on(link, 'click', L.DomEvent.stop)
+                .on(link, 'click', function () {
+                    window.LAYER = this.options.callback.call(map.editTools);
+                }, this);
+
+            return container;
+        }
+
+    });
+
+    L.NewLineControl = L.EditControl.extend({
+
+        options: {
+            position: 'topleft',
+            callback: map.editTools.startPolyline,
+            kind: 'line',
+            html: '\\/\\'
+        }
+
+    });
+    L.NewPolygonControl = L.EditControl.extend({
+
+        options: {
+            position: 'topleft',
+            callback: map.editTools.startPolygon,
+            kind: 'polygon',
+            html: '▰'
+        }
+
+    });
+    L.NewMarkerControl = L.EditControl.extend({
+
+        options: {
+            position: 'topleft',
+            callback: map.editTools.startMarker,
+            kind: 'marker',
+            html: '🖈'
+        }
+
+    });
+    L.NewRectangleControl = L.EditControl.extend({
+
+        options: {
+            position: 'topleft',
+            callback: map.editTools.startRectangle,
+            kind: 'rectangle',
+            html: '⬛'
+        }
+
+    });
+
+    L.NewCircleControl = L.EditControl.extend({
+
+        options: {
+            position: 'topleft',
+            callback: map.editTools.startCircle,
+            kind: 'circle',
+            html: '⬤'
+        }
+
+    });
+
+    map.addControl(new L.NewMarkerControl());
+    map.addControl(new L.NewLineControl());
+    map.addControl(new L.NewPolygonControl());
+    map.addControl(new L.NewRectangleControl());
+    map.addControl(new L.NewCircleControl());
+
+    var line = L.polyline([
+        [43.1292, 1.256],
+        [43.1295, 1.259],
+        [43.1291, 1.261]
+    ]).addTo(map);
+    line.enableEdit();
+    line.on('dblclick', L.DomEvent.stop).on('dblclick', line.toggleEdit);
+
+
+    var multi = L.polygon([
+        [
+            [
+                [43.1239, 1.244],
+                [43.123, 1.253],
+                [43.1252, 1.255],
+                [43.1250, 1.251],
+                [43.1239, 1.244]
+            ],
+            [
+                [43.124, 1.246],
+                [43.1236, 1.248],
+                [43.12475, 1.250]
+            ],
+            [
+                [43.124, 1.251],
+                [43.1236, 1.253],
+                [43.12475, 1.254]
+            ]
+        ],
+        [
+            [
+                [43.1269, 1.246],
+                [43.126, 1.252],
+                [43.1282, 1.255],
+                [43.1280, 1.245]
+            ]
+        ]
+    ]).addTo(map);
+    multi.enableEdit();
+    multi.on('dblclick', L.DomEvent.stop).on('dblclick', multi.toggleEdit);
+    multi.bindPopup('hi!');
+
+    var poly = L.polygon([
+        [
+            [43.1239, 1.259],
+            [43.123, 1.263],
+            [43.1252, 1.265],
+            [43.1250, 1.261]
+        ],
+        [
+            [43.124, 1.263],
+            [43.1236, 1.261],
+            [43.12475, 1.262]
+        ]
+    ]).addTo(map);
+    poly.enableEdit();
+    poly.on('dblclick', L.DomEvent.stop).on('dblclick', poly.toggleEdit);
+
+    var rec = L.rectangle([
+        [70.1235, 1.255],
+        [70.1215, 1.259]
+    ]).addTo(map);
+    rec.enableEdit();
+    rec.on('dblclick', L.DomEvent.stop).on('dblclick', rec.toggleEdit);
+
+    var circle = L.circle([10.1220, 10.250], { radius: 100 }).addTo(map);
+    circle.enableEdit();
+    circle.on('dblclick', L.DomEvent.stop).on('dblclick', circle.toggleEdit);
+</script>

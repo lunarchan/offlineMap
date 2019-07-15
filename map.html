@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Leaflet map</title>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" href="dist/leaflet/leaflet.css" />
+	<link rel="stylesheet" href="dist/leaflet-easybutton/src/easy-button.css" />
+
+	<script type="text/javascript" src="dist/leaflet/leaflet.js"></script>
+	<script type="text/javascript" src="dist/leaflet-easybutton/src/easy-button.js"></script>
+	<script src="dist/leaflet/Path.Drag.js"></script>
+	<script src="dist/leaflet/Leaflet.Editable.js"></script>
+	<script src="dist/leaflet/Leaflet.NavBar.js"></script>
+
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		div#container {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		.leaflet-control-navbar-fwd {
+			background-image: url("dist/images/arrow-right_000000_14.png");
+		}
+
+		.leaflet-control-navbar-back {
+			background-image: url("dist/images/arrow-left_000000_14.png");
+		}
+
+		.leaflet-control-navbar-home {
+			background-image: url("dist/images/home_000000_14.png");
+		}
+
+
+		.leaflet-control-navbar-fwd-disabled {
+			background-image: url("dist/images/arrow-right_bbbbbb_14.png");
+		}
+
+		.leaflet-control-navbar-back-disabled {
+			background-image: url("dist/images/arrow-left_bbbbbb_14.png");
+		}
+
+		.leaflet-control-navbar-home-disabled {
+			background-image: url("dist/images/home_bbbbbb_14.png");
+		}
+
+		canvas {
+			margin: 20px auto;
+			display: block;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="container" z-index="0">
+	</div>
+
+
+
+
+
+
+</body>
+
+</html>
+<script>
+	var mapUrl = 'http://localhost:3001/47626774/{z}/{x}/{y}';
+	var tileLayer = new L.TileLayer(mapUrl, {
+		minZoom: 1,
+		maxZoom: 7,
+		attribution: '卫星地图'
+	});
+
+	var center = new L.LatLng(38.8225909761771, 105.380859375);
+
+	map = new L.Map('container', {
+		center: center,
+		zoom: 4,
+		//zoomControl: false,
+		attributionControl: false,
+		layers: [tileLayer],
+		editable: true
+	});
+	var layerGroup = L.featureGroup().addTo(map);
+	L.control.navbar().addTo(map)
+
+	//动态画点
+	function drawPoint() {
+		map.on('click', function (event) {
+			var marker = new L.marker(event.latlng)
+			marker.addTo(layerGroup)
+			marker.dragging.enable();
+			map.off('click')
+		})
+	};
+	//动态画圆
+	function drawCircle() {
+
+		var r = 0
+		var i = null
+		var cir
+		var tempCircle = new L.circle()
+		map.dragging.disable();//将mousemove事件移动地图禁用
+		map.on('mousedown', onmouseDown);
+		map.on('mouseup', onmouseUp);
+		map.on('mousemove', onMove)
+		function onmouseDown(e) {
+			i = e.latlng
+			//确定圆心
+		}
+		function onMove(e) {
+			if (i) {
+				map.dragging.disable();
+				r = L.latLng(e.latlng).distanceTo(i)
+				tempCircle.setLatLng(i)
+				tempCircle.setRadius(r)
+				//tempCircle.setStyle({ color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1 })
+				map.addLayer(tempCircle)
+
+			}
+		}
+
+		function onmouseUp(e) {
+			tempCircle.remove()
+			r = L.latLng(e.latlng).distanceTo(i)//计算半径
+			cir = new L.circle(i, { radius: r })
+			cir.addTo(layerGroup)
+			cir.enableEdit();
+			i = null
+			r = 0
+
+			map.dragging.enable();
+			cir.dragging.enable();
+			map.off('mousedown')
+			map.off('mouseup')
+			map.off('mousemove')
+
+		}
+
+	};
+	//动态画线
+	function drawLine() {
+
+		var points = []
+		var lines = new L.polyline(points)
+		var tempLines = new L.polyline([])
+		map.on('click', onClick);    //点击地图
+		map.on('dblclick', onDoubleClick);
+		map.on('mousemove', onMove)//双击地图
+		function onClick(e) {
+			points.push([e.latlng.lat, e.latlng.lng])
+			lines.addLatLng(e.latlng)
+			map.addLayer(lines)
+		}
+		function onMove(e) {
+			if (points.length > 0) {
+				ls = [points[points.length - 1], [e.latlng.lat, e.latlng.lng]]
+				tempLines.setLatLngs(ls)
+				map.addLayer(tempLines)
+			}
+		}
+		function onDoubleClick(e) {
+			tempLines.remove()
+			lines.remove()
+			var lineFn = L.polyline(points)
+			lineFn.addTo(layerGroup).enableEdit();
+			lines.on('dblclick', L.DomEvent.stop).on('dblclick', lines.toggleEdit);
+			points = []
+			lines = new L.polyline(points)
+			map.dragging.enable();
+			map.off('click')
+			map.off('mousemove')
+			map.off('dblclick')
+		}
+	};
+
+	//动态画多边形
+	function drawPolyline() {
+
+		var points = []
+		var lines = new L.polyline([])
+		var tempLines = new L.polyline([], { dashArray: 5 })
+
+		map.on('click', onClick);    //点击地图
+		map.on('dblclick', onDoubleClick);
+		map.on('mousemove', onMove)//双击地图
+
+		function onClick(e) {
+			points.push([e.latlng.lat, e.latlng.lng])
+			lines.addLatLng(e.latlng)
+			map.addLayer(tempLines)
+			map.addLayer(lines)
+		}
+		function onMove(e) {
+			if (points.length > 0) {
+				ls = [points[points.length - 1], [e.latlng.lat, e.latlng.lng], points[0]]
+				tempLines.setLatLngs(ls)
+				// map.addLayer(tempLines)
+			}
+		}
+		function onDoubleClick(e) {
+			var polyFn = L.polygon(points)
+			polyFn.addTo(layerGroup).enableEdit();
+			lines.on('dblclick', L.DomEvent.stop).on('dblclick', lines.toggleEdit);
+			points = []
+			lines.remove()
+			tempLines.remove()
+			lines = new L.polyline([])
+
+			map.dragging.enable();
+			map.off('click')
+			map.off('dblclick')
+			map.off('mousemove')
+		}
+	};
+	//动态画矩形
+	function drawRectangle() {
+
+		map.dragging.disable();
+
+		var rect
+		var tmprect
+		const latlngs = []
+		map.on('mousedown', onClick);    //点击地图
+		map.on('mouseup', onDoubleClick);
+		//开始绘制，监听鼠标移动事件
+		map.on('mousemove', onMove)
+		//map.off(....) 关闭该事件
+		function onClick(e) {
+
+			if (typeof (tmprect) != 'undefined') {
+				tmprect.remove()
+			}
+			//左上角坐标
+			latlngs[0] = [e.latlng.lat, e.latlng.lng]
+
+
+		}
+		function onMove(e) {
+			map.dragging.disable();
+			latlngs[1] = [e.latlng.lat, e.latlng.lng]
+			//删除临时矩形
+			if (typeof (tmprect) != 'undefined') {
+				tmprect.remove()
+			}
+			//添加临时矩形
+			tmprect = L.rectangle(latlngs, { dashArray: 5 }).addTo(layerGroup)
+
+		}
+
+		function onDoubleClick(e) {
+			//矩形绘制完成，移除临时矩形，并停止监听鼠标移动事件
+
+			tmprect.remove()
+			map.off('mousemove')
+			//右下角坐标
+			//latlngs[1] = [e.latlng.lat, e.latlng.lng]
+			rect = L.rectangle(latlngs, {
+				fillOpacity: 0,
+				weight: 2
+			})
+			rect.addTo(layerGroup).enableEdit();
+			rect.on('dblclick', L.DomEvent.stop).on('dblclick', rect.toggleEdit);
+			//调整view范围
+
+			//map.fitBounds(latlngs)
+			map.dragging.enable();
+			rect.dragging.enable();
+
+			map.off('scrollWheelZoom')
+			map.off('mousedown')
+			map.off('mouseup')
+			map.off('mousemove')
+		}
+
+	};
+
+	//画矩形旗标
+	function drawRectangleFlag() {
+		map.on('click', function (event) {
+			var myIcon = L.icon({
+				iconUrl: 'dist/images/rectangle-flag-red.svg',
+				iconSize: [50, 100],
+				iconAnchor: [22, 94],
+				popupAnchor: [-3, -76],
+				shadowSize: [68, 95],
+				shadowAnchor: [22, 94]
+			});
+			var marker = L.marker(event.latlng, { icon: myIcon });
+			marker.addTo(layerGroup)
+			marker.dragging.enable();
+			map.off('click')
+		})
+	}
+	//画三角旗标
+	function drawTriangleFlag() {
+		map.on('click', function (event) {
+			var myIcon = L.icon({
+				iconUrl: 'dist/images/triangle-flag-red-empty.svg',
+				iconSize: [50, 100],
+				iconAnchor: [22, 94],
+				popupAnchor: [-3, -76],
+				shadowSize: [68, 95],
+				shadowAnchor: [22, 94]
+			});
+			var marker = L.marker(event.latlng, { icon: myIcon });
+			marker.addTo(layerGroup)
+			marker.dragging.enable();
+			map.off('click')
+		})
+	}
+	//画战斗机图标
+	function drawWarcraft() {
+		map.on('click', function (event) {
+			var myIcon = L.icon({
+				iconUrl: 'dist/images/warcraft.png',
+				iconSize: [50, 100],
+				iconAnchor: [22, 94],
+				popupAnchor: [-3, -76],
+				shadowSize: [68, 95],
+				shadowAnchor: [22, 94]
+			});
+			var marker = L.marker(event.latlng, { icon: myIcon });
+			marker.addTo(layerGroup)
+			marker.dragging.enable();
+			map.off('click')
+		})
+	}
+
+	//雷达扫描图
+	function drawRadar() {
+		map.on('click', function (event) {
+			var myIcon = L.icon({
+				iconUrl: 'dist/images/radar.svg',
+				iconSize: [50, 100],
+				iconAnchor: [22, 94],
+				popupAnchor: [-3, -76],
+				shadowSize: [68, 95],
+				shadowAnchor: [22, 94]
+			});
+			var marker = L.marker(event.latlng, { icon: myIcon });
+			marker.addTo(layerGroup)
+			marker.dragging.enable();
+			map.off('click')
+		})
+
+	};
+
+	function clearAllFeatures() {
+		layerGroup.clearLayers();
+
+	}
+
+	function deleteSelectedFeature() {
+		layerGroup.on("click", function (event) {
+			var featureId = event.layer._leaflet_id
+			alert(featureId)
+			if (featureId != 'undefined') {
+				layerGroup.removeLayer(featureId)
+			}
+			layerGroup.off("click")
+		});
+
+	}
+	L.easyButton({
+		states: [{
+			stateName: 'draw-point',
+			icon: '<img src="dist/images/point.png">',
+			title: 'draw a point',
+			onClick: drawPoint
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-line',
+			icon: '<img src="dist/images/line.png">',
+			title: 'draw a line',
+			onClick: drawLine
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-circle',
+			icon: '<img src="dist/images/circle.png">',
+			title: 'draw a circle',
+			onClick: drawCircle
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-polygon',
+			icon: '<img src="dist/images/polygon.png">',
+			title: 'draw a polygon',
+			onClick: drawPolyline
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-rectangle',
+			icon: '<img src="dist/images/rectangle.png">',
+			title: 'draw a rectangle',
+			onClick: drawRectangle
+		}]
+	}).addTo(map);
+	//flag
+	L.easyButton({
+		states: [{
+			stateName: 'draw-rectangle-flag',
+			icon: '<img src="dist/images/rectangle-flag.png">',
+			title: 'draw a rectangle flag',
+			onClick: drawRectangleFlag
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-triangle-flag',
+			icon: '<img src="dist/images/triangle-flag.png">',
+			title: 'draw a rectangle flag',
+			onClick: drawTriangleFlag
+		}]
+	}).addTo(map);
+
+	L.easyButton({
+		states: [{
+			stateName: 'draw-warcraft',
+			icon: '<img src="dist/images/warcraft.png">',
+			title: 'draw a warcraft',
+			onClick: drawWarcraft
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-naval-craft',
+			icon: '<img src="dist/images/naval-craft.png">',
+			title: 'draw a naval craft',
+			onClick: drawTriangleFlag
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'draw-submarine',
+			icon: '<img src="dist/images/submarine.png">',
+			title: 'draw a submarine',
+			onClick: drawTriangleFlag
+		}]
+	}).addTo(map);
+
+	//radar
+	L.easyButton({
+		states: [{
+			stateName: 'draw-radar',
+			icon: '<img src="dist/images/radar.jpg">',
+			title: 'draw a radar scan',
+			onClick: drawRadar
+		}]
+	}).addTo(map);
+
+	L.easyButton({
+		states: [{
+			stateName: 'clear-all-features',
+			icon: '<img src="dist/images/delete.png">',
+			title: 'clear all features',
+			onClick: clearAllFeatures
+		}]
+	}).addTo(map);
+	L.easyButton({
+		states: [{
+			stateName: 'clear-all-features',
+			icon: '<img src="dist/images/delete.png">',
+			title: 'clear selected features',
+			onClick: deleteSelectedFeature
+		}]
+	}).addTo(map);
+
+
+
+</script>
